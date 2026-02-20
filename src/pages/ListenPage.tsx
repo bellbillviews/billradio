@@ -37,6 +37,7 @@ export default function ListenPage() {
   const radiocoStreamUrl = getSetting("radioco_stream_url");
   const radiocoPlayerEmbed = getSetting("radioco_player_embed");
   const radiocoEnabled = getSetting("radioco_enabled") === "true";
+  const mixlrEnabled = getSetting("mixlr_enabled") === "true";
 
   // YouTube Live
   const isYouTubeLive = broadcast?.broadcastEnabled && broadcast?.youtubeVideoId;
@@ -66,7 +67,6 @@ export default function ListenPage() {
 
   // Check if scheduled media should override
   const hasScheduledMedia = scheduledMedia && scheduledMedia.file_url;
-  const mixlrEnabled = getSetting("mixlr_enabled") === "true";
   const scheduledMatchesMode = hasScheduledMedia && scheduledMedia.file_type === mode;
 
   const showFallback = !scheduledMatchesMode && ((mode === "audio" && !audioLive) || (mode === "video" && !videoLive));
