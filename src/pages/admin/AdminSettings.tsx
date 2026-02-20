@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/admin/FileUpload";
 import { useSiteSettings, useUpdateSiteSetting } from "@/hooks/useAdminData";
+import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, Image } from "lucide-react";
@@ -30,12 +31,12 @@ export default function AdminSettings() {
 
   const handleSaveAll = async () => {
     try {
-      const promises = Object.keys(localSettings).map(key => {
+      const promises = Object.keys(localSettings).map(async (key) => {
         const id = getSettingId(key);
         if (id) {
           return updateSetting.mutateAsync({ id, setting_value: localSettings[key] });
         }
-        return Promise.resolve();
+        return supabase.from('site_settings').insert([{ setting_key: key, setting_value: localSettings[key], setting_type: 'string' }]);
       });
       await Promise.all(promises);
       setLocalSettings({});

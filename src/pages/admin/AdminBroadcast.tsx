@@ -69,6 +69,8 @@ export default function AdminBroadcast() {
         const setting = getSetting(key)
         if (setting) {
           promises.push(updateSetting.mutateAsync({ id: setting.id, setting_value: value }));
+        } else {
+          promises.push(supabase.from('site_settings').insert([{ setting_key: key, setting_value: value, setting_type: 'string' }]));
         }
       }
       await Promise.all(promises);
@@ -88,10 +90,13 @@ export default function AdminBroadcast() {
 
   const handleToggle = async (key: string, checked: boolean) => {
     const setting = getSetting(key);
+    const value = checked ? "true" : "false";
     if (setting) {
-      await updateSetting.mutateAsync({ id: setting.id, setting_value: checked ? "true" : "false" });
-      queryClient.invalidateQueries({ queryKey: ["site_settings"] });
+      await updateSetting.mutateAsync({ id: setting.id, setting_value: value });
+    } else {
+      await supabase.from('site_settings').insert([{ setting_key: key, setting_value: value, setting_type: 'boolean' }]);
     }
+    queryClient.invalidateQueries({ queryKey: ["site_settings"] });
   };
 
   const resetPlatformForm = () => {

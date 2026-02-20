@@ -84,6 +84,370 @@ const NETWORK_TYPES = [
   { value: "custom", label: "Custom Code" },
 ];
 
+// Ad Form Component
+const AdForm = ({ ad, onSave }: { ad: BillboardAd | null; onSave: (data: Partial<BillboardAd>) => void }) => {
+  const [formData, setFormData] = useState<Partial<BillboardAd>>(
+    ad || {
+      title: "",
+      description: "",
+      image_url: "",
+      link_url: "",
+      advertiser_name: "",
+      advertiser_email: "",
+      advertiser_phone: "",
+      ad_type: "banner",
+      placement: "all",
+      start_date: new Date().toISOString(),
+      end_date: null,
+      is_active: true,
+      is_auto_end: true,
+      priority: 0,
+      price: null,
+      currency: "USD",
+      notes: "",
+    }
+  );
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="col-span-2">
+          <Label>Ad Title *</Label>
+          <Input
+            value={formData.title || ""}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Enter ad title"
+          />
+        </div>
+
+        <div className="col-span-2">
+          <Label>Description</Label>
+          <Textarea
+            value={formData.description || ""}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Brief description of the ad"
+            rows={2}
+          />
+        </div>
+
+        <div className="col-span-2">
+          <Label>Ad Image</Label>
+          <FileUpload
+            bucket="images"
+            folder="ads"
+            value={formData.image_url || ""}
+            onChange={(url) => setFormData({ ...formData, image_url: url })}
+          />
+        </div>
+
+        <div className="col-span-2">
+          <Label>Link URL</Label>
+          <Input
+            value={formData.link_url || ""}
+            onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
+            placeholder="https://example.com/landing-page"
+          />
+        </div>
+
+        <div>
+          <Label>Advertiser Name *</Label>
+          <Input
+            value={formData.advertiser_name || ""}
+            onChange={(e) => setFormData({ ...formData, advertiser_name: e.target.value })}
+            placeholder="Company/Person name"
+          />
+        </div>
+
+        <div>
+          <Label>Advertiser Email</Label>
+          <Input
+            type="email"
+            value={formData.advertiser_email || ""}
+            onChange={(e) => setFormData({ ...formData, advertiser_email: e.target.value })}
+            placeholder="contact@example.com"
+          />
+        </div>
+
+        <div>
+          <Label>Advertiser Phone</Label>
+          <Input
+            value={formData.advertiser_phone || ""}
+            onChange={(e) => setFormData({ ...formData, advertiser_phone: e.target.value })}
+            placeholder="+1234567890"
+          />
+        </div>
+
+        <div>
+          <Label>Ad Type</Label>
+          <Select
+            value={formData.ad_type}
+            onValueChange={(value) => setFormData({ ...formData, ad_type: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AD_TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label>Placement</Label>
+          <Select
+            value={formData.placement}
+            onValueChange={(value) => setFormData({ ...formData, placement: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PLACEMENTS.map((p) => (
+                <SelectItem key={p.value} value={p.value}>
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label>Priority (higher = more visible)</Label>
+          <Input
+            type="number"
+            value={formData.priority || 0}
+            onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
+          />
+        </div>
+
+        <div>
+          <Label>Start Date</Label>
+          <Input
+            type="datetime-local"
+            value={formData.start_date?.slice(0, 16) || ""}
+            onChange={(e) => setFormData({ ...formData, start_date: new Date(e.target.value).toISOString() })}
+          />
+        </div>
+
+        <div>
+          <Label>End Date (optional)</Label>
+          <Input
+            type="datetime-local"
+            value={formData.end_date?.slice(0, 16) || ""}
+            onChange={(e) => setFormData({ ...formData, end_date: e.target.value ? new Date(e.target.value).toISOString() : null })}
+          />
+        </div>
+
+        <div>
+          <Label>Price</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={formData.price || ""}
+            onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || null })}
+            placeholder="0.00"
+          />
+        </div>
+
+        <div>
+          <Label>Currency</Label>
+          <Select
+            value={formData.currency}
+            onValueChange={(value) => setFormData({ ...formData, currency: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="USD">USD</SelectItem>
+              <SelectItem value="NGN">NGN</SelectItem>
+              <SelectItem value="GBP">GBP</SelectItem>
+              <SelectItem value="EUR">EUR</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="col-span-2">
+          <Label>Notes</Label>
+          <Textarea
+            value={formData.notes || ""}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            placeholder="Internal notes about this ad"
+            rows={2}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.is_active}
+            onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+          />
+          <Label>Active</Label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={formData.is_auto_end}
+            onCheckedChange={(checked) => setFormData({ ...formData, is_auto_end: checked })}
+          />
+          <Label>Auto-end on end date</Label>
+        </div>
+      </div>
+
+      <Button
+        onClick={() => onSave(formData)}
+        className="w-full"
+        disabled={!formData.title || !formData.advertiser_name}
+      >
+        {ad ? "Update Ad" : "Create Ad"}
+      </Button>
+    </div>
+  );
+};
+
+// Network Form Component
+const NetworkForm = ({ network, onSave }: { network: AdNetwork | null; onSave: (data: Partial<AdNetwork>) => void }) => {
+  const [formData, setFormData] = useState<Partial<AdNetwork>>(
+    network || {
+      name: "",
+      network_type: "adsense",
+      publisher_id: "",
+      slot_ids: {},
+      is_active: false,
+      placement: "all",
+      priority: 0,
+      config: {},
+    }
+  );
+
+  const [slotIdsJson, setSlotIdsJson] = useState(JSON.stringify(formData.slot_ids || {}, null, 2));
+  const [configJson, setConfigJson] = useState(JSON.stringify(formData.config || {}, null, 2));
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Network Name</Label>
+        <Input
+          value={formData.name || ""}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="My AdSense Account"
+        />
+      </div>
+
+      <div>
+        <Label>Network Type</Label>
+        <Select
+          value={formData.network_type}
+          onValueChange={(value) => setFormData({ ...formData, network_type: value })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {NETWORK_TYPES.map((type) => (
+              <SelectItem key={type.value} value={type.value}>
+                {type.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label>Publisher/Client ID</Label>
+        <Input
+          value={formData.publisher_id || ""}
+          onChange={(e) => setFormData({ ...formData, publisher_id: e.target.value })}
+          placeholder="ca-pub-1234567890"
+        />
+      </div>
+
+      <div>
+        <Label>Slot IDs (JSON)</Label>
+        <Textarea
+          value={slotIdsJson}
+          onChange={(e) => setSlotIdsJson(e.target.value)}
+          placeholder='{"default": "1234567890", "sidebar": "0987654321"}'
+          rows={3}
+          className="font-mono text-sm"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Format: {"{"}"placement": "slot_id"{"}"}
+        </p>
+      </div>
+
+      <div>
+        <Label>Placement</Label>
+        <Select
+          value={formData.placement}
+          onValueChange={(value) => setFormData({ ...formData, placement: value })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PLACEMENTS.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {formData.network_type === "custom" && (
+        <div>
+          <Label>Custom Embed Code / Config (JSON)</Label>
+          <Textarea
+            value={configJson}
+            onChange={(e) => setConfigJson(e.target.value)}
+            placeholder='{"embed_code": "<script>...</script>"}'
+            rows={4}
+            className="font-mono text-sm"
+          />
+        </div>
+      )}
+
+      <div>
+        <Label>Priority</Label>
+        <Input
+          type="number"
+          value={formData.priority || 0}
+          onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={formData.is_active}
+          onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+        />
+        <Label>Active</Label>
+      </div>
+
+      <Button
+        onClick={() => {
+          try {
+            const slot_ids = JSON.parse(slotIdsJson);
+            const config = JSON.parse(configJson);
+            onSave({ ...formData, slot_ids, config });
+          } catch {
+            toast.error("Invalid JSON in slot IDs or config");
+          }
+        }}
+        className="w-full"
+        disabled={!formData.name}
+      >
+        {network ? "Update Network" : "Add Network"}
+      </Button>
+    </div>
+  );
+};
+
 export default function AdminBillboard() {
   const queryClient = useQueryClient();
   const [editingAd, setEditingAd] = useState<BillboardAd | null>(null);
@@ -377,370 +741,6 @@ export default function AdminBillboard() {
         printWindow.print();
       };
     }
-  };
-
-  // Ad Form Component
-  const AdForm = ({ ad, onSave }: { ad: BillboardAd | null; onSave: (data: Partial<BillboardAd>) => void }) => {
-    const [formData, setFormData] = useState<Partial<BillboardAd>>(
-      ad || {
-        title: "",
-        description: "",
-        image_url: "",
-        link_url: "",
-        advertiser_name: "",
-        advertiser_email: "",
-        advertiser_phone: "",
-        ad_type: "banner",
-        placement: "all",
-        start_date: new Date().toISOString(),
-        end_date: null,
-        is_active: true,
-        is_auto_end: true,
-        priority: 0,
-        price: null,
-        currency: "USD",
-        notes: "",
-      }
-    );
-
-    return (
-      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <Label>Ad Title *</Label>
-            <Input
-              value={formData.title || ""}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Enter ad title"
-            />
-          </div>
-
-          <div className="col-span-2">
-            <Label>Description</Label>
-            <Textarea
-              value={formData.description || ""}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief description of the ad"
-              rows={2}
-            />
-          </div>
-
-          <div className="col-span-2">
-            <Label>Ad Image</Label>
-            <FileUpload
-              bucket="images"
-              folder="ads"
-              value={formData.image_url || ""}
-              onChange={(url) => setFormData({ ...formData, image_url: url })}
-            />
-          </div>
-
-          <div className="col-span-2">
-            <Label>Link URL</Label>
-            <Input
-              value={formData.link_url || ""}
-              onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
-              placeholder="https://example.com/landing-page"
-            />
-          </div>
-
-          <div>
-            <Label>Advertiser Name *</Label>
-            <Input
-              value={formData.advertiser_name || ""}
-              onChange={(e) => setFormData({ ...formData, advertiser_name: e.target.value })}
-              placeholder="Company/Person name"
-            />
-          </div>
-
-          <div>
-            <Label>Advertiser Email</Label>
-            <Input
-              type="email"
-              value={formData.advertiser_email || ""}
-              onChange={(e) => setFormData({ ...formData, advertiser_email: e.target.value })}
-              placeholder="contact@example.com"
-            />
-          </div>
-
-          <div>
-            <Label>Advertiser Phone</Label>
-            <Input
-              value={formData.advertiser_phone || ""}
-              onChange={(e) => setFormData({ ...formData, advertiser_phone: e.target.value })}
-              placeholder="+1234567890"
-            />
-          </div>
-
-          <div>
-            <Label>Ad Type</Label>
-            <Select
-              value={formData.ad_type}
-              onValueChange={(value) => setFormData({ ...formData, ad_type: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AD_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>Placement</Label>
-            <Select
-              value={formData.placement}
-              onValueChange={(value) => setFormData({ ...formData, placement: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PLACEMENTS.map((p) => (
-                  <SelectItem key={p.value} value={p.value}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>Priority (higher = more visible)</Label>
-            <Input
-              type="number"
-              value={formData.priority || 0}
-              onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
-            />
-          </div>
-
-          <div>
-            <Label>Start Date</Label>
-            <Input
-              type="datetime-local"
-              value={formData.start_date?.slice(0, 16) || ""}
-              onChange={(e) => setFormData({ ...formData, start_date: new Date(e.target.value).toISOString() })}
-            />
-          </div>
-
-          <div>
-            <Label>End Date (optional)</Label>
-            <Input
-              type="datetime-local"
-              value={formData.end_date?.slice(0, 16) || ""}
-              onChange={(e) => setFormData({ ...formData, end_date: e.target.value ? new Date(e.target.value).toISOString() : null })}
-            />
-          </div>
-
-          <div>
-            <Label>Price</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={formData.price || ""}
-              onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || null })}
-              placeholder="0.00"
-            />
-          </div>
-
-          <div>
-            <Label>Currency</Label>
-            <Select
-              value={formData.currency}
-              onValueChange={(value) => setFormData({ ...formData, currency: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="USD">USD</SelectItem>
-                <SelectItem value="NGN">NGN</SelectItem>
-                <SelectItem value="GBP">GBP</SelectItem>
-                <SelectItem value="EUR">EUR</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="col-span-2">
-            <Label>Notes</Label>
-            <Textarea
-              value={formData.notes || ""}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Internal notes about this ad"
-              rows={2}
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={formData.is_active}
-              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-            />
-            <Label>Active</Label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={formData.is_auto_end}
-              onCheckedChange={(checked) => setFormData({ ...formData, is_auto_end: checked })}
-            />
-            <Label>Auto-end on end date</Label>
-          </div>
-        </div>
-
-        <Button
-          onClick={() => onSave(formData)}
-          className="w-full"
-          disabled={!formData.title || !formData.advertiser_name}
-        >
-          {ad ? "Update Ad" : "Create Ad"}
-        </Button>
-      </div>
-    );
-  };
-
-  // Network Form Component
-  const NetworkForm = ({ network, onSave }: { network: AdNetwork | null; onSave: (data: Partial<AdNetwork>) => void }) => {
-    const [formData, setFormData] = useState<Partial<AdNetwork>>(
-      network || {
-        name: "",
-        network_type: "adsense",
-        publisher_id: "",
-        slot_ids: {},
-        is_active: false,
-        placement: "all",
-        priority: 0,
-        config: {},
-      }
-    );
-
-    const [slotIdsJson, setSlotIdsJson] = useState(JSON.stringify(formData.slot_ids || {}, null, 2));
-    const [configJson, setConfigJson] = useState(JSON.stringify(formData.config || {}, null, 2));
-
-    return (
-      <div className="space-y-4">
-        <div>
-          <Label>Network Name</Label>
-          <Input
-            value={formData.name || ""}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="My AdSense Account"
-          />
-        </div>
-
-        <div>
-          <Label>Network Type</Label>
-          <Select
-            value={formData.network_type}
-            onValueChange={(value) => setFormData({ ...formData, network_type: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {NETWORK_TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label>Publisher/Client ID</Label>
-          <Input
-            value={formData.publisher_id || ""}
-            onChange={(e) => setFormData({ ...formData, publisher_id: e.target.value })}
-            placeholder="ca-pub-1234567890"
-          />
-        </div>
-
-        <div>
-          <Label>Slot IDs (JSON)</Label>
-          <Textarea
-            value={slotIdsJson}
-            onChange={(e) => setSlotIdsJson(e.target.value)}
-            placeholder='{"default": "1234567890", "sidebar": "0987654321"}'
-            rows={3}
-            className="font-mono text-sm"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Format: {"{"}"placement": "slot_id"{"}"}
-          </p>
-        </div>
-
-        <div>
-          <Label>Placement</Label>
-          <Select
-            value={formData.placement}
-            onValueChange={(value) => setFormData({ ...formData, placement: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PLACEMENTS.map((p) => (
-                <SelectItem key={p.value} value={p.value}>
-                  {p.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {formData.network_type === "custom" && (
-          <div>
-            <Label>Custom Embed Code / Config (JSON)</Label>
-            <Textarea
-              value={configJson}
-              onChange={(e) => setConfigJson(e.target.value)}
-              placeholder='{"embed_code": "<script>...</script>"}'
-              rows={4}
-              className="font-mono text-sm"
-            />
-          </div>
-        )}
-
-        <div>
-          <Label>Priority</Label>
-          <Input
-            type="number"
-            value={formData.priority || 0}
-            onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={formData.is_active}
-            onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-          />
-          <Label>Active</Label>
-        </div>
-
-        <Button
-          onClick={() => {
-            try {
-              const slot_ids = JSON.parse(slotIdsJson);
-              const config = JSON.parse(configJson);
-              onSave({ ...formData, slot_ids, config });
-            } catch {
-              toast.error("Invalid JSON in slot IDs or config");
-            }
-          }}
-          className="w-full"
-          disabled={!formData.name}
-        >
-          {network ? "Update Network" : "Add Network"}
-        </Button>
-      </div>
-    );
   };
 
   return (
