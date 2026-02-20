@@ -62,13 +62,14 @@ export default function AdminBroadcast() {
 
   const handleSaveAll = async () => {
     try {
+      const promises = [];
       for (const [key, value] of Object.entries(localSettings)) {
-        const setting = getSetting(key);
+        const setting = getSetting(key)
         if (setting) {
-          await updateSetting.mutateAsync({ id: setting.id, setting_value: value });
+          promises.push(updateSetting.mutateAsync({ id: setting.id, setting_value: value }));
         }
       }
-      setLocalSettings({});
+      await Promise.all(promises);
       toast({ title: "All settings saved!" });
     } catch {
       toast({ variant: "destructive", title: "Failed to save settings" });
@@ -141,9 +142,9 @@ export default function AdminBroadcast() {
       // Upload to storage
       const ext = file.name.split(".").pop();
       const path = `queue/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("media").upload(path, file);
+      const { error: uploadErr } = await supabase.storage.from("files").upload(path, file);
       if (uploadErr) { toast({ variant: "destructive", title: "Upload failed", description: uploadErr.message }); continue; }
-      const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(path);
+      const { data: { publicUrl } } = supabase.storage.from("files").getPublicUrl(path);
       await createQueueItem.mutateAsync({
         title: file.name,
         file_url: publicUrl,
@@ -168,11 +169,12 @@ export default function AdminBroadcast() {
 
   const handleDrop = async (dropIndex: number) => {
     if (draggedIndex === null || draggedIndex === dropIndex || !queue) return;
+
     const newQueue = [...queue];
     const [draggedItem] = newQueue.splice(draggedIndex, 1);
     newQueue.splice(dropIndex, 0, draggedItem);
     setDraggedIndex(null);
-    await reorderQueue.mutateAsync(newQueue.map((item, i) => ({ id: item.id, sort_order: i })));
+    reorderQueue.mutateAsync(newQueue.map((item, i) => ({ id: item.id, sort_order: i })));
   };
 
   if (settingsLoading) {
@@ -352,7 +354,7 @@ export default function AdminBroadcast() {
                       <DialogHeader><DialogTitle>Add to Queue</DialogTitle></DialogHeader>
                       <form onSubmit={handleAddQueueItem} className="space-y-4">
                         <div className="space-y-2">
-                          <Label>Title *</Label>
+                        <Label>Title (will overwrite existing file title)</Label>
                           <Input value={queueForm.title} onChange={(e) => setQueueForm({ ...queueForm, title: e.target.value })} placeholder="Track name" required />
                         </div>
                         <div className="space-y-2">
@@ -387,7 +389,7 @@ export default function AdminBroadcast() {
                       draggable
                       onDragStart={() => handleDragStart(index)}
                       onDragOver={handleDragOver}
-                      onDrop={() => handleDrop(index)}
+                      onDrop={(e) => { e.preventDefault(); handleDrop(index); }}
                       className={`flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border transition-colors ${draggedIndex === index ? 'opacity-50 border-primary border-dashed' : 'hover:border-primary/50'}`}
                     >
                       <div className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">

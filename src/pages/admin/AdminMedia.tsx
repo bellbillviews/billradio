@@ -28,7 +28,7 @@ export default function AdminMedia() {
     queryKey: ["media-files", currentFolder],
     queryFn: async () => {
       const { data, error } = await supabase.storage
-        .from("media")
+        .from("images")
         .list(currentFolder, { limit: 100, sortBy: { column: "created_at", order: "desc" } });
       if (error) throw error;
       return data as StorageFile[];
@@ -38,7 +38,7 @@ export default function AdminMedia() {
   const deleteMutation = useMutation({
     mutationFn: async (fileName: string) => {
       const { error } = await supabase.storage
-        .from("media")
+        .from("images")
         .remove([`${currentFolder}/${fileName}`]);
       if (error) throw error;
     },
@@ -63,7 +63,7 @@ export default function AdminMedia() {
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const filePath = `${currentFolder}/${fileName}`;
 
-        const { error } = await supabase.storage.from("media").upload(filePath, file);
+        const { error } = await supabase.storage.from("images").upload(filePath, file);
         if (error) throw error;
       }
 
@@ -82,7 +82,7 @@ export default function AdminMedia() {
 
   const getPublicUrl = (fileName: string) => {
     const { data } = supabase.storage
-      .from("media")
+      .from("images")
       .getPublicUrl(`${currentFolder}/${fileName}`);
     return data.publicUrl;
   };

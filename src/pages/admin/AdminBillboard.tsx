@@ -428,7 +428,7 @@ export default function AdminBillboard() {
           <div className="col-span-2">
             <Label>Ad Image</Label>
             <FileUpload
-              bucket="media"
+              bucket="images"
               folder="ads"
               value={formData.image_url || ""}
               onChange={(url) => setFormData({ ...formData, image_url: url })}

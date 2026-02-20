@@ -123,9 +123,9 @@ export default function AdminSchedule() {
     if (!file) return;
     const ext = file.name.split(".").pop();
     const path = `schedule/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-    const { error } = await supabase.storage.from("media").upload(path, file);
+    const { error } = await supabase.storage.from("files").upload(path, file);
     if (error) { toast({ variant: "destructive", title: "Upload failed" }); return; }
-    const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(path);
+    const { data: { publicUrl } } = supabase.storage.from("files").getPublicUrl(path);
     setForm(prev => ({ ...prev, file_url: publicUrl, title: prev.title || file.name, file_type: file.type.startsWith("video") ? "video" : "audio" }));
     toast({ title: "File uploaded" });
     e.target.value = "";

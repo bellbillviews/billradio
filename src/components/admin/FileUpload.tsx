@@ -20,7 +20,7 @@ interface FileUploadProps {
 export function FileUpload({
   value,
   onChange,
-  bucket = "media",
+  bucket = "images",
   folder = "uploads",
   accept = "image/*",
   label = "Image",

@@ -86,7 +86,7 @@ export default function AdminSettings() {
               <Label>Station Slogan</Label>
               <Input value={getValue("station_slogan")} onChange={(e) => handleChange("station_slogan", e.target.value)} placeholder="The Sound of Culture, Voice, and Music" />
             </div>
-            <FileUpload value={getValue("logo_url")} onChange={(url) => handleChange("logo_url", url)} label="Station Logo" folder="logos" />
+            <FileUpload value={getValue("logo_url")} onChange={(url) => handleChange("logo_url", url)} label="Station Logo" folder="logos" bucket="images" />
           </CardContent>
         </Card>
 
@@ -142,6 +142,7 @@ export default function AdminSettings() {
                 label={bg.label}
                 folder="backgrounds"
                 placeholder="Paste image URL or upload"
+                bucket="images"
               />
             ))}
           </CardContent>
@@ -162,6 +163,7 @@ export default function AdminSettings() {
                 label={bg.label}
                 folder="backgrounds"
                 placeholder="Paste image URL or upload"
+                bucket="images"
               />
             ))}
           </CardContent>
