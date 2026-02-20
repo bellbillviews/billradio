@@ -14,6 +14,7 @@ import { useSiteSettings, useUpdateSiteSetting } from "@/hooks/useAdminData";
 import { useBroadcastPlatforms, useCreateBroadcastPlatform, useUpdateBroadcastPlatform, useDeleteBroadcastPlatform, BroadcastPlatform } from "@/hooks/useAdminData";
 import { useBroadcastQueue, useCreateQueueItem, useUpdateQueueItem, useDeleteQueueItem, useReorderQueue, BroadcastQueueItem } from "@/hooks/useBroadcastQueue";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Pencil, Trash2, Tv, Radio, Youtube, ArrowUp, ArrowDown, Music, Upload, Eye, Save, FolderOpen, Play, RotateCcw, GripVertical, ListPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -41,6 +42,7 @@ export default function AdminBroadcast() {
   const createQueueItem = useCreateQueueItem();
   const deleteQueueItem = useDeleteQueueItem();
   const reorderQueue = useReorderQueue();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -71,6 +73,8 @@ export default function AdminBroadcast() {
       }
       await Promise.all(promises);
       toast({ title: "All settings saved!" });
+      setLocalSettings({});
+      queryClient.invalidateQueries({ queryKey: ["site_settings"] });
     } catch {
       toast({ variant: "destructive", title: "Failed to save settings" });
     }
@@ -86,6 +90,7 @@ export default function AdminBroadcast() {
     const setting = getSetting(key);
     if (setting) {
       await updateSetting.mutateAsync({ id: setting.id, setting_value: checked ? "true" : "false" });
+      queryClient.invalidateQueries({ queryKey: ["site_settings"] });
     }
   };
 

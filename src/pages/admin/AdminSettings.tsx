@@ -6,12 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/admin/FileUpload";
 import { useSiteSettings, useUpdateSiteSetting } from "@/hooks/useAdminData";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, Image } from "lucide-react";
 
 export default function AdminSettings() {
   const { data: settings, isLoading } = useSiteSettings();
   const updateSetting = useUpdateSiteSetting();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [localSettings, setLocalSettings] = useState<Record<string, string>>({});
 
@@ -27,15 +29,21 @@ export default function AdminSettings() {
   };
 
   const handleSaveAll = async () => {
-    const keys = Object.keys(localSettings);
-    for (const key of keys) {
-      const id = getSettingId(key);
-      if (id) {
-        await updateSetting.mutateAsync({ id, setting_value: localSettings[key] });
-      }
+    try {
+      const promises = Object.keys(localSettings).map(key => {
+        const id = getSettingId(key);
+        if (id) {
+          return updateSetting.mutateAsync({ id, setting_value: localSettings[key] });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(promises);
+      setLocalSettings({});
+      toast({ title: "All settings saved", description: "Your changes have been saved successfully." });
+      queryClient.invalidateQueries({ queryKey: ["site_settings"] });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Failed to save settings", description: "An error occurred while saving." });
     }
-    setLocalSettings({});
-    toast({ title: "All settings saved", description: "Your changes have been saved successfully." });
   };
 
   if (isLoading) {
