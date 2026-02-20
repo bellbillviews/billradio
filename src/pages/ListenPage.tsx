@@ -58,7 +58,7 @@ export default function ListenPage() {
   ];
 
   // Determine fallback state
-  const audioLive = radiocoEnabled && !!radiocoStreamUrl;
+  const audioLive = (radiocoEnabled && !!radiocoStreamUrl) || mixlrEnabled;
   const videoLive = !!isYouTubeLive;
   const activeQueue = queue?.filter(q => q.is_active) || [];
   const audioQueue = activeQueue.filter(q => q.file_type === "audio");
@@ -66,6 +66,7 @@ export default function ListenPage() {
 
   // Check if scheduled media should override
   const hasScheduledMedia = scheduledMedia && scheduledMedia.file_url;
+  const mixlrEnabled = getSetting("mixlr_enabled") === "true";
   const scheduledMatchesMode = hasScheduledMedia && scheduledMedia.file_type === mode;
 
   const showFallback = !scheduledMatchesMode && ((mode === "audio" && !audioLive) || (mode === "video" && !videoLive));
@@ -144,7 +145,9 @@ export default function ListenPage() {
                 </div>
               ) : (
                 /* AUDIO MODE: Radio.co stream only */
-                <RadioCoPlayer streamUrl={radiocoStreamUrl} playerEmbed={radiocoPlayerEmbed} logoUrl={logoUrl} stationName={stationName} onPlayChange={setIsPlaying} />
+                 mixlrEnabled ? 
+                 <MixlrPlayer mixlrEmbedCode={getSetting("mixlr_embed_code")} logoUrl={logoUrl} stationName={stationName} onPlayChange={setIsPlaying} />
+                 :<RadioCoPlayer streamUrl={radiocoStreamUrl} playerEmbed={radiocoPlayerEmbed} logoUrl={logoUrl} stationName={stationName} onPlayChange={setIsPlaying} />
               )}
             </div>
 
@@ -224,6 +227,30 @@ function extractVideoId(input: string): string {
   ];
   for (const p of patterns) { const m = input.match(p); if (m) return m[1]; }
   return input.trim();
+}
+
+function MixlrPlayer({ mixlrEmbedCode, logoUrl, stationName, onPlayChange }: { mixlrEmbedCode: string; logoUrl?: string; stationName: string; onPlayChange?: (p: boolean) => void }) {
+  useEffect(() => {
+    onPlayChange?.(true);
+    return () => onPlayChange?.(false);
+  }, [onPlayChange]);
+
+  return (
+    <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+      <div className="absolute inset-0 rounded-3xl overflow-hidden glass-dark border border-white/10 bg-black">
+        {mixlrEmbedCode ? (
+          <div 
+            className="w-full h-full flex items-center justify-center [&>iframe]:w-full [&>iframe]:h-full" 
+            dangerouslySetInnerHTML={{ __html: mixlrEmbedCode }} 
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+            <p className="text-white/40">Waiting for stream...</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* Radio.co Player — 16:9 responsive with logo fallback */
