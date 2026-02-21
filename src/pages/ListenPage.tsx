@@ -62,9 +62,13 @@ export default function ListenPage() {
   const videoLive = !!isYouTubeLive;
   const activeQueue = useMemo(() => {
     if (!queue) return [];
-    return queue
+      return queue
       .filter(q => q.is_active)
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      .sort((a, b) => {
+        const diff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+        if (diff !== 0) return diff;
+        return new Date((a as any).created_at).getTime() - new Date((b as any).created_at).getTime();
+      });
   }, [queue]);
   const audioQueue = useMemo(() => activeQueue.filter(q => q.file_type === "audio"), [activeQueue]);
   const videoQueue = useMemo(() => activeQueue.filter(q => q.file_type === "video"), [activeQueue]);

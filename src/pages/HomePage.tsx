@@ -50,7 +50,11 @@ export default function HomePage() {
     if (!queue) return [];
     return queue
       .filter(q => q.is_active && q.file_type === "audio" && q.file_url)
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      .sort((a, b) => {
+        const diff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+        if (diff !== 0) return diff;
+        return new Date((a as any).created_at).getTime() - new Date((b as any).created_at).getTime();
+      });
   }, [queue]);
   const isLive = (radiocoEnabled && !!radiocoStreamUrl) || mixlrEnabled || broadcast?.broadcastEnabled;
 
