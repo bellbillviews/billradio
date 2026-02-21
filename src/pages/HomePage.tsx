@@ -44,9 +44,10 @@ export default function HomePage() {
   const mixlrEnabled = getSetting("mixlr_enabled") === "true";
   const mixlrEmbedCode = getSetting("mixlr_embed_code");
   const radiocoEnabled = getSetting("radioco_enabled") === "true";
+  const radiocoStreamUrl = getSetting("radioco_stream_url");
 
-  const activeQueue = useMemo(() => queue?.filter(q => q.is_active && q.file_type === "audio") || [], [queue]);
-  const isLive = radiocoEnabled || mixlrEnabled || broadcast?.broadcastEnabled;
+  const activeQueue = useMemo(() => queue?.filter(q => q.is_active && q.file_type === "audio" && q.file_url) || [], [queue]);
+  const isLive = (radiocoEnabled && !!radiocoStreamUrl) || mixlrEnabled || broadcast?.broadcastEnabled;
 
   return (
     <div className="min-h-screen bg-background">
