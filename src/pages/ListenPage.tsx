@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 export default function ListenPage() {
   const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState<"audio" | "video">("audio");
-  const { data: settings } = useSiteSettings();
+  const { data: settings, isLoading: settingsLoading } = useSiteSettings();
   const { data: broadcast } = useBroadcastSettings();
   const { data: queue } = useBroadcastQueue("broadcast");
   const { data: scheduledMedia } = useCurrentScheduledMedia();
@@ -118,7 +118,13 @@ export default function ListenPage() {
 
             {/* Player */}
             <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
-              {scheduledMatchesMode ? (
+              {settingsLoading ? (
+                <div className="relative w-full min-h-[300px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
+                  <div className="absolute inset-0 rounded-3xl glass-dark flex items-center justify-center border border-white/10">
+                    <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                  </div>
+                </div>
+              ) : scheduledMatchesMode ? (
                 /* SCHEDULED MEDIA: Override everything */
                 <ScheduledPlayer media={scheduledMedia!} mode={mode} logoUrl={logoUrl} onPlayChange={setIsPlaying} />
               ) : showFallback ? (
@@ -295,7 +301,7 @@ function RadioCoPlayer({ streamUrl, playerEmbed, logoUrl, stationName, onPlayCha
   };
 
   return (
-    <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+    <div className="relative w-full min-h-[300px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
       <audio ref={audioRef} src={streamUrl} preload="auto" />
       <div className="absolute inset-0 rounded-3xl overflow-hidden glass-dark flex flex-col items-center justify-center p-6">
         <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
@@ -372,7 +378,7 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
 
   if (playableItems.length === 0) {
     return (
-      <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+      <div className="relative w-full min-h-[300px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
         <div className="absolute inset-0 rounded-3xl glass-dark flex flex-col items-center justify-center">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[hsl(210_20%_90%/0.3)] to-transparent" />
           {logoUrl ? <img src={logoUrl} alt="" className="w-20 h-20 rounded-full object-cover border-2 border-white/10 mb-4" /> : <Radio className="w-12 h-12 text-white/20 mb-4" />}
@@ -384,14 +390,14 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
 
   if (mode === "video") {
     return (
-      <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+      <div className="relative w-full min-h-[300px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
         <video ref={videoRef} className="absolute inset-0 w-full h-full rounded-3xl object-cover bg-black" autoPlay onEnded={handleEnded} playsInline />
       </div>
     );
   }
 
   return (
-    <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+    <div className="relative w-full min-h-[300px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
       <audio ref={audioRef} autoPlay onEnded={handleEnded} />
       <div className="absolute inset-0 rounded-3xl glass-dark flex flex-col items-center justify-center">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[hsl(210_20%_90%/0.3)] to-transparent" />
@@ -419,14 +425,14 @@ function ScheduledPlayer({ media, mode, logoUrl, onPlayChange }: { media: { file
 
   if (media.file_type === "video") {
     return (
-      <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+      <div className="relative w-full min-h-[300px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
         <video ref={videoRef} className="absolute inset-0 w-full h-full rounded-3xl object-cover bg-black" autoPlay playsInline controls />
       </div>
     );
   }
 
   return (
-    <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+    <div className="relative w-full min-h-[300px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
       <audio ref={audioRef} autoPlay />
       <div className="absolute inset-0 rounded-3xl glass-dark flex flex-col items-center justify-center">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[hsl(210_20%_90%/0.3)] to-transparent" />
