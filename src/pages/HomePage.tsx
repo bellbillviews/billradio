@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Radio, Headphones, Users, Heart, ChevronRight, Mic2, Loader2, Calendar, Megaphone, Sparkles } from "lucide-react";
+import { Radio, Headphones, Users, Heart, ChevronRight, Mic2, Loader2, Calendar, Megaphone, Sparkles, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -12,7 +12,9 @@ import { useShows, usePresenters, useEvents } from "@/hooks/useAdminData";
 import { useSiteSettings } from "@/hooks/useSiteData";
 import { useLiveOnAir } from "@/hooks/useLiveOnAir";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
+import { useBroadcastQueue } from "@/hooks/useBroadcastQueue";
 import { cn } from "@/lib/utils";
+import { useState, useRef, useEffect, useMemo } from "react";
 
 export default function HomePage() {
   const { data: shows, isLoading: showsLoading } = useShows();
@@ -21,6 +23,7 @@ export default function HomePage() {
   const { data: settings } = useSiteSettings();
   const { data: liveOnAir } = useLiveOnAir();
   const { data: broadcast } = useBroadcastSettings();
+  const { data: queue } = useBroadcastQueue("broadcast");
 
   const activeShows = shows?.filter(show => show.is_active) || [];
   const activePresenters = presenters?.filter(p => p.is_active) || [];
@@ -40,6 +43,10 @@ export default function HomePage() {
   const partnerBg = getSetting("bg_image_section_partner");
   const mixlrEnabled = getSetting("mixlr_enabled") === "true";
   const mixlrEmbedCode = getSetting("mixlr_embed_code");
+  const radiocoEnabled = getSetting("radioco_enabled") === "true";
+
+  const activeQueue = useMemo(() => queue?.filter(q => q.is_active && q.file_type === "audio") || [], [queue]);
+  const isLive = radiocoEnabled || mixlrEnabled || broadcast?.broadcastEnabled;
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,6 +97,8 @@ export default function HomePage() {
                 <div className="rounded-3xl overflow-hidden glass-dark border border-white/10 shadow-2xl">
                   <div dangerouslySetInnerHTML={{ __html: mixlrEmbedCode }} />
                 </div>
+              ) : !isLive && activeQueue.length > 0 ? (
+                <QueueMiniPlayer items={activeQueue} />
               ) : (
                 <AudioPlayer size="compact" />
               )}
@@ -309,6 +318,64 @@ export default function HomePage() {
       </section>
 
       <Footer />
+    </div>
+  );
+}
+
+function QueueMiniPlayer({ items }: { items: { id: string; title: string; file_url: string | null }[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const playableItems = useMemo(() => items.filter(i => i.file_url), [items]);
+  const currentItem = playableItems[currentIndex];
+
+  useEffect(() => {
+    if (playableItems.length === 0) return;
+    const audio = audioRef.current;
+    if (audio) {
+      const newSrc = currentItem?.file_url || "";
+      if (audio.src !== newSrc) {
+        audio.src = newSrc;
+        audio.load();
+      }
+      audio.play()
+        .then(() => setIsPlaying(true))
+        .catch((e) => console.log("Autoplay prevented:", e));
+    }
+  }, [currentIndex, currentItem]);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleEnded = () => {
+    if (currentIndex < playableItems.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      setCurrentIndex(0); // Loop
+    }
+  };
+
+  if (!currentItem) return null;
+
+  return (
+    <div className="glass-dark rounded-full p-2 pr-6 flex items-center gap-4 border border-white/10 shadow-lg animate-fade-in">
+      <audio ref={audioRef} onEnded={handleEnded} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} />
+      <Button size="icon" className="rounded-full w-12 h-12 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0" onClick={togglePlay}>
+        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-1" />}
+      </Button>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-primary font-bold uppercase tracking-wider mb-0.5">Now Playing</p>
+        <p className="text-sm text-white font-medium truncate">{currentItem.title}</p>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Share2, Facebook, Twitter, MessageCircle, Copy, Check, Headphones, Tv, Radio, Loader2 } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -60,9 +60,9 @@ export default function ListenPage() {
   // Determine fallback state
   const audioLive = (radiocoEnabled && !!radiocoStreamUrl) || mixlrEnabled;
   const videoLive = !!isYouTubeLive;
-  const activeQueue = queue?.filter(q => q.is_active) || [];
-  const audioQueue = activeQueue.filter(q => q.file_type === "audio");
-  const videoQueue = activeQueue.filter(q => q.file_type === "video");
+  const activeQueue = useMemo(() => queue?.filter(q => q.is_active) || [], [queue]);
+  const audioQueue = useMemo(() => activeQueue.filter(q => q.file_type === "audio"), [activeQueue]);
+  const videoQueue = useMemo(() => activeQueue.filter(q => q.file_type === "video"), [activeQueue]);
 
   // Check if scheduled media should override
   const hasScheduledMedia = scheduledMedia && scheduledMedia.file_url;
@@ -369,8 +369,13 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
     if (playableItems.length === 0) return;
     const el = mode === "video" ? videoRef.current : audioRef.current;
     if (el) {
-      el.src = playableItems[currentIndex]?.file_url || "";
-      el.play().then(() => onPlayChange?.(true)).catch(() => {});
+      const newSrc = playableItems[currentIndex]?.file_url || "";
+      // Only update src if it changed to prevent reloading/pausing
+      if (el.src !== newSrc) {
+        el.src = newSrc;
+        el.load();
+      }
+      el.play().then(() => onPlayChange?.(true)).catch((e) => console.log("Autoplay prevented:", e));
     }
   }, [currentIndex, playableItems, mode]);
 
