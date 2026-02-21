@@ -38,6 +38,8 @@ export default function HomePage() {
   const statsBg = getSetting("bg_image_section_stats");
   const whyBg = getSetting("bg_image_section_why");
   const partnerBg = getSetting("bg_image_section_partner");
+  const mixlrEnabled = getSetting("mixlr_enabled") === "true";
+  const mixlrEmbedCode = getSetting("mixlr_embed_code");
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,7 +86,13 @@ export default function HomePage() {
             </div>
 
             <div className="max-w-md mx-auto animate-fade-in" style={{ animationDelay: "0.4s" }}>
-              <AudioPlayer size="compact" />
+              {mixlrEnabled && mixlrEmbedCode ? (
+                <div className="rounded-3xl overflow-hidden glass-dark border border-white/10 shadow-2xl">
+                  <div dangerouslySetInnerHTML={{ __html: mixlrEmbedCode }} />
+                </div>
+              ) : (
+                <AudioPlayer size="compact" />
+              )}
             </div>
 
             <div className="flex justify-center animate-fade-in" style={{ animationDelay: "0.5s" }}>

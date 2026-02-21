@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
-import { StickyPlayer } from "@/components/StickyPlayer";
 import { DynamicSocialLinks } from "@/components/DynamicSocialLinks";
 import { ListenerRequestForm } from "@/components/ListenerRequestForm";
 import { PageAds } from "@/components/ads/PageAds";
@@ -219,7 +218,6 @@ export default function ListenPage() {
       </section>
 
       <Footer />
-      <StickyPlayer />
     </div>
   );
 }
