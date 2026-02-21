@@ -60,7 +60,12 @@ export default function ListenPage() {
   // Determine fallback state
   const audioLive = (radiocoEnabled && !!radiocoStreamUrl) || mixlrEnabled;
   const videoLive = !!isYouTubeLive;
-  const activeQueue = useMemo(() => queue?.filter(q => q.is_active) || [], [queue]);
+  const activeQueue = useMemo(() => {
+    if (!queue) return [];
+    return queue
+      .filter(q => q.is_active)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [queue]);
   const audioQueue = useMemo(() => activeQueue.filter(q => q.file_type === "audio"), [activeQueue]);
   const videoQueue = useMemo(() => activeQueue.filter(q => q.file_type === "video"), [activeQueue]);
 

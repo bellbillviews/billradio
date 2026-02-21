@@ -46,7 +46,12 @@ export default function HomePage() {
   const radiocoEnabled = getSetting("radioco_enabled") === "true";
   const radiocoStreamUrl = getSetting("radioco_stream_url");
 
-  const activeQueue = useMemo(() => queue?.filter(q => q.is_active && q.file_type === "audio" && q.file_url) || [], [queue]);
+  const activeQueue = useMemo(() => {
+    if (!queue) return [];
+    return queue
+      .filter(q => q.is_active && q.file_type === "audio" && q.file_url)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [queue]);
   const isLive = (radiocoEnabled && !!radiocoStreamUrl) || mixlrEnabled || broadcast?.broadcastEnabled;
 
   return (
@@ -375,7 +380,6 @@ function QueueMiniPlayer({ items }: { items: { id: string; title: string; file_u
       </Button>
       <div className="min-w-0 flex-1">
         <p className="text-xs text-primary font-bold uppercase tracking-wider mb-0.5">Now Playing</p>
-        <p className="text-sm text-white font-medium truncate">{currentItem.title}</p>
       </div>
     </div>
   );
