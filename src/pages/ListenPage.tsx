@@ -236,7 +236,7 @@ function MixlrPlayer({ mixlrEmbedCode, logoUrl, stationName, onPlayChange }: { m
   }, [onPlayChange]);
 
   return (
-    <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+    <div className="relative w-full min-h-[400px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
       <div className="absolute inset-0 rounded-3xl overflow-hidden glass-dark border border-white/10 bg-black">
         {mixlrEmbedCode ? (
           <div 
@@ -264,6 +264,25 @@ function RadioCoPlayer({ streamUrl, playerEmbed, logoUrl, stationName, onPlayCha
     if (audioRef.current) audioRef.current.volume = volume / 100;
   }, [volume]);
 
+  useEffect(() => {
+    const attemptPlay = async () => {
+      if (audioRef.current && streamUrl) {
+        setIsLoading(true);
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+          onPlayChange?.(true);
+        } catch (error) {
+          console.log("Autoplay blocked:", error);
+          setIsPlaying(false);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    attemptPlay();
+  }, [streamUrl, onPlayChange]);
+
   const togglePlay = async () => {
     if (!audioRef.current || !streamUrl) return;
     if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); onPlayChange?.(false); }
@@ -277,7 +296,7 @@ function RadioCoPlayer({ streamUrl, playerEmbed, logoUrl, stationName, onPlayCha
 
   return (
     <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-      <audio ref={audioRef} src={streamUrl} preload="none" />
+      <audio ref={audioRef} src={streamUrl} preload="auto" />
       <div className="absolute inset-0 rounded-3xl overflow-hidden glass-dark flex flex-col items-center justify-center p-6">
         <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[hsl(210_20%_90%)] to-transparent" />
