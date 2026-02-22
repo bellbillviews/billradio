@@ -187,6 +187,10 @@ export default function AdminBroadcast() {
     reorderQueue.mutateAsync(newQueue.map((item, i) => ({ id: item.id, sort_order: i })));
   };
 
+  const handleNewPlaylist = () => {
+    toast({ title: "Coming Soon", description: "Playlist management is currently under development." });
+  };
+
   if (settingsLoading) {
     return (
       <AdminLayout title="Broadcast Management">
@@ -345,7 +349,7 @@ export default function AdminBroadcast() {
                       <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Select Playlist" /></SelectTrigger>
                       <SelectContent><SelectItem value="default">Default Queue</SelectItem></SelectContent>
                     </Select>
-                    <Button size="sm" variant="outline" className="h-8"><ListPlus className="w-3.5 h-3.5 mr-1.5" />New</Button>
+                    <Button size="sm" variant="outline" className="h-8" onClick={handleNewPlaylist}><ListPlus className="w-3.5 h-3.5 mr-1.5" />New</Button>
                   </div>
                 </div>
                 <div className="flex gap-2 items-center">
