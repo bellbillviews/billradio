@@ -49,7 +49,17 @@ export default function AdminBroadcast() {
       const parsed = raw ? JSON.parse(raw) : [];
       if (Array.isArray(parsed)) setPlaylists(parsed);
     } catch (e) { setPlaylists([]); }
+    // load active playlist setting
+    const active = getVal("active_playlist");
+    if (active) setSelectedPlaylist(active);
   }, [settings]);
+
+  const saveActivePlaylist = async (id: string) => {
+    const setting = getSetting("active_playlist");
+    if (setting) await updateSetting.mutateAsync({ id: setting.id, setting_value: id });
+    else await supabase.from("site_settings").insert([{ setting_key: "active_playlist", setting_value: id, setting_type: "string" }]);
+    queryClient.invalidateQueries({ queryKey: ["site_settings"] });
+  };
 
   const { data: queue } = useBroadcastQueue(selectedPlaylist);
   const createQueueItem = useCreateQueueItem();
@@ -389,7 +399,7 @@ export default function AdminBroadcast() {
                   <CardTitle>Queue & Playlists</CardTitle>
                   <CardDescription>Autoplays when live streams are offline. Drag to reorder.</CardDescription>
                   <div className="flex items-center gap-2 mt-2">
-                    <Select value={selectedPlaylist} onValueChange={(v) => setSelectedPlaylist(v)}>
+                    <Select value={selectedPlaylist} onValueChange={(v) => { setSelectedPlaylist(v); saveActivePlaylist(v); }}>
                       <SelectTrigger className="h-8 w-[220px]"><SelectValue placeholder="Select Playlist" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="broadcast">Default Queue</SelectItem>

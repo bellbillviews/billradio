@@ -19,13 +19,15 @@ export default function ListenPage() {
   const [mode, setMode] = useState<"audio" | "video">("audio");
   const { data: settings, isLoading: settingsLoading } = useSiteSettings();
   const { data: broadcast } = useBroadcastSettings();
-  const { data: queue } = useBroadcastQueue("broadcast");
+  const getSetting = (key: string) => settings?.find(s => s.setting_key === key)?.setting_value || "";
+  const activePlaylist = getSetting("active_playlist") || "broadcast";
+  const { data: queue } = useBroadcastQueue(activePlaylist);
   const { data: scheduledMedia } = useCurrentScheduledMedia();
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Track listener sessions
   useListenerTracking(isPlaying, mode);
-  const getSetting = (key: string) => settings?.find(s => s.setting_key === key)?.setting_value || "";
+  // moved above to allow playlist selection
   const stationName = getSetting("station_name") || "Bellbill Radio";
   const logoUrl = getSetting("logo_url");
   const listenBg = getSetting("bg_image_listen") || "/images/bg-listen.jpg";
@@ -366,9 +368,11 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const playableItems = useMemo(() => items.filter(i => i.file_url), [items]);
-
   const handleEnded = useCallback(() => {
-    if (playableItems.length === 0) return;
+    if (playableItems.length === 0) {
+      onPlayChange?.(false);
+      return;
+    }
     const next = currentIndex + 1;
     if (next < playableItems.length) {
       setCurrentIndex(next);
@@ -378,11 +382,25 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
       setCurrentIndex(0);
       return;
     }
-    // End of queue and not looping: stop playback and notify parent
     const el = mode === "video" ? videoRef.current : audioRef.current;
     try { el?.pause(); } catch {}
     onPlayChange?.(false);
   }, [currentIndex, playableItems.length, loop, mode, onPlayChange]);
+
+  // Reset index when playlist changes (new items) so playback starts at top
+  useEffect(() => {
+    setCurrentIndex(0);
+    if (playableItems.length === 0) onPlayChange?.(false);
+  }, [playableItems.map(i => i.id).join("|")]);
+
+  // Attach ended event listener directly to guard against ref swaps
+  useEffect(() => {
+    const el = mode === "video" ? videoRef.current : audioRef.current;
+    if (!el) return;
+    el.removeEventListener("ended", handleEnded);
+    el.addEventListener("ended", handleEnded);
+    return () => el.removeEventListener("ended", handleEnded);
+  }, [handleEnded, mode, currentIndex]);
 
   useEffect(() => {
     if (playableItems.length === 0) return;
@@ -390,8 +408,8 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
     if (el) {
       const item = playableItems[currentIndex];
       const newSrc = item?.file_url || "";
-      // Only update src if it changed to prevent unnecessary reloads
       if (el.src !== newSrc) {
+        try { el.pause(); } catch {}
         el.src = newSrc;
         try { el.load(); } catch {}
       }
