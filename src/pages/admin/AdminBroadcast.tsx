@@ -38,16 +38,22 @@ export default function AdminBroadcast() {
   const createPlatform = useCreateBroadcastPlatform();
   const updatePlatform = useUpdateBroadcastPlatform();
   const deletePlatform = useDeleteBroadcastPlatform();
-  const [playlists, setPlaylists] = useState<{ id: string; name: string }[]>([]);
+  const [playlists, setPlaylists] = useState<{ id: string; name: string; start_at?: string | null; end_at?: string | null }[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState<string>("broadcast");
   const [playlistDialogOpen, setPlaylistDialogOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [newPlaylistStart, setNewPlaylistStart] = useState<string | null>(null);
+  const [newPlaylistEnd, setNewPlaylistEnd] = useState<string | null>(null);
+  const [editingPlaylist, setEditingPlaylist] = useState<{ id?: string; name: string; start_at?: string | null; end_at?: string | null } | null>(null);
 
   useEffect(() => {
     try {
       const raw = getVal("playlists");
       const parsed = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(parsed)) setPlaylists(parsed);
+      if (Array.isArray(parsed)) {
+        const norm = parsed.map((p: any) => ({ id: p.id, name: p.name, start_at: p.start_at ?? null, end_at: p.end_at ?? null }));
+        setPlaylists(norm);
+      }
     } catch (e) { setPlaylists([]); }
     // load active playlist setting
     const active = getVal("active_playlist");
@@ -210,7 +216,7 @@ export default function AdminBroadcast() {
     reorderQueue.mutateAsync(newQueue.map((item, i) => ({ id: item.id, sort_order: i })));
   };
 
-  const savePlaylistsSetting = async (pl: { id: string; name: string }[]) => {
+  const savePlaylistsSetting = async (pl: { id: string; name: string; start_at?: string | null; end_at?: string | null }[]) => {
     const value = JSON.stringify(pl);
     const setting = getSetting("playlists");
     if (setting) await updateSetting.mutateAsync({ id: setting.id, setting_value: value });
@@ -223,10 +229,12 @@ export default function AdminBroadcast() {
     const name = newPlaylistName.trim();
     if (!name) { toast({ variant: "destructive", title: "Name required" }); return; }
     const id = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now().toString(36)}`;
-    const next = [...playlists, { id, name }];
+    const next = [...playlists, { id, name, start_at: newPlaylistStart, end_at: newPlaylistEnd }];
     await savePlaylistsSetting(next);
     setPlaylists(next);
     setNewPlaylistName("");
+    setNewPlaylistStart(null);
+    setNewPlaylistEnd(null);
     setPlaylistDialogOpen(false);
     setSelectedPlaylist(id);
     toast({ title: "Playlist created" });
@@ -243,6 +251,24 @@ export default function AdminBroadcast() {
     setPlaylists(next);
     setSelectedPlaylist("broadcast");
     toast({ title: "Playlist deleted and items moved to default" });
+  };
+
+  const handleOpenEditPlaylist = (pId: string) => {
+    const p = playlists.find(p => p.id === pId);
+    if (!p) return;
+    setEditingPlaylist({ id: p.id, name: p.name, start_at: p.start_at ?? null, end_at: p.end_at ?? null });
+    setPlaylistDialogOpen(true);
+  };
+
+  const handleSaveEditedPlaylist = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editingPlaylist || !editingPlaylist.id) return;
+    const next = playlists.map(p => p.id === editingPlaylist.id ? { ...p, name: editingPlaylist.name, start_at: editingPlaylist.start_at ?? null, end_at: editingPlaylist.end_at ?? null } : p);
+    await savePlaylistsSetting(next);
+    setPlaylists(next);
+    setEditingPlaylist(null);
+    setPlaylistDialogOpen(false);
+    toast({ title: "Playlist updated" });
   };
 
   if (settingsLoading) {
@@ -401,28 +427,48 @@ export default function AdminBroadcast() {
                   <div className="flex items-center gap-2 mt-2">
                     <Select value={selectedPlaylist} onValueChange={(v) => { setSelectedPlaylist(v); saveActivePlaylist(v); }}>
                       <SelectTrigger className="h-8 w-[220px]"><SelectValue placeholder="Select Playlist" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="broadcast">Default Queue</SelectItem>
-                        {playlists.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Button size="sm" variant="outline" className="h-8" onClick={() => setPlaylistDialogOpen(true)}><ListPlus className="w-3.5 h-3.5 mr-1.5" />New</Button>
-                    <Button size="sm" variant="outline" className="h-8" onClick={() => handleDeletePlaylist(selectedPlaylist)} disabled={selectedPlaylist === "broadcast"}><Trash2 className="w-3.5 h-3.5 mr-1.5" />Delete</Button>
-                    <Dialog open={playlistDialogOpen} onOpenChange={setPlaylistDialogOpen}>
-                      <DialogContent>
-                        <DialogHeader><DialogTitle>Create Playlist</DialogTitle></DialogHeader>
-                        <form onSubmit={handleCreatePlaylist} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Playlist Name</Label>
-                            <Input value={newPlaylistName} onChange={(e) => setNewPlaylistName(e.target.value)} placeholder="My Playlist" required />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button type="submit" className="flex-1">Create</Button>
-                            <Button variant="ghost" onClick={() => setPlaylistDialogOpen(false)}>Cancel</Button>
-                          </div>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
+                        <SelectContent>
+                          <SelectItem value="broadcast">Default Queue</SelectItem>
+                          {playlists.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" variant="outline" className="h-8" onClick={() => { setEditingPlaylist(null); setNewPlaylistName(""); setPlaylistDialogOpen(true); }}><ListPlus className="w-3.5 h-3.5 mr-1.5" />New</Button>
+                      <Button size="sm" variant="outline" className="h-8" onClick={() => handleOpenEditPlaylist(selectedPlaylist)} disabled={selectedPlaylist === "broadcast"}><Pencil className="w-3.5 h-3.5 mr-1.5" />Edit</Button>
+                      <Button size="sm" variant="outline" className="h-8" onClick={() => handleDeletePlaylist(selectedPlaylist)} disabled={selectedPlaylist === "broadcast"}><Trash2 className="w-3.5 h-3.5 mr-1.5" />Delete</Button>
+                      <Dialog open={playlistDialogOpen} onOpenChange={setPlaylistDialogOpen}>
+                        <DialogContent>
+                          <DialogHeader><DialogTitle>{editingPlaylist ? "Edit Playlist" : "Create Playlist"}</DialogTitle></DialogHeader>
+                          <form onSubmit={editingPlaylist ? handleSaveEditedPlaylist : handleCreatePlaylist} className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Playlist Name</Label>
+                              <Input value={editingPlaylist ? editingPlaylist.name : newPlaylistName} onChange={(e) => {
+                                if (editingPlaylist) setEditingPlaylist({ ...editingPlaylist, name: e.target.value });
+                                else setNewPlaylistName(e.target.value);
+                              }} placeholder="My Playlist" required />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Schedule (optional)</Label>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input type="datetime-local" value={editingPlaylist ? (editingPlaylist.start_at ? new Date(editingPlaylist.start_at).toISOString().slice(0,16) : (newPlaylistStart ? new Date(newPlaylistStart).toISOString().slice(0,16) : "")) : (newPlaylistStart ? new Date(newPlaylistStart).toISOString().slice(0,16) : "")} onChange={(e) => {
+                                  const v = e.target.value ? new Date(e.target.value).toISOString() : null;
+                                  if (editingPlaylist) setEditingPlaylist({ ...editingPlaylist, start_at: v });
+                                  else setNewPlaylistStart(v);
+                                }} placeholder="Start" />
+                                <Input type="datetime-local" value={editingPlaylist ? (editingPlaylist.end_at ? new Date(editingPlaylist.end_at).toISOString().slice(0,16) : (newPlaylistEnd ? new Date(newPlaylistEnd).toISOString().slice(0,16) : "")) : (newPlaylistEnd ? new Date(newPlaylistEnd).toISOString().slice(0,16) : "")} onChange={(e) => {
+                                  const v = e.target.value ? new Date(e.target.value).toISOString() : null;
+                                  if (editingPlaylist) setEditingPlaylist({ ...editingPlaylist, end_at: v });
+                                  else setNewPlaylistEnd(v);
+                                }} placeholder="End" />
+                              </div>
+                              <p className="text-xs text-muted-foreground">If set, the playlist will become active automatically between the start and end times (local timezone).</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button type="submit" className="flex-1">{editingPlaylist ? "Save" : "Create"}</Button>
+                              <Button variant="ghost" onClick={() => { setPlaylistDialogOpen(false); setEditingPlaylist(null); }}>Cancel</Button>
+                            </div>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
                   </div>
                 </div>
                 <div className="flex gap-2 items-center">

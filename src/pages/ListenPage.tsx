@@ -20,8 +20,28 @@ export default function ListenPage() {
   const { data: settings, isLoading: settingsLoading } = useSiteSettings();
   const { data: broadcast } = useBroadcastSettings();
   const getSetting = (key: string) => settings?.find(s => s.setting_key === key)?.setting_value || "";
-  const activePlaylist = getSetting("active_playlist") || "broadcast";
-  const { data: queue } = useBroadcastQueue(activePlaylist);
+  const configuredActive = getSetting("active_playlist") || "broadcast";
+  const playlistsRaw = getSetting("playlists");
+  let playlistToUse = configuredActive;
+  try {
+    const parsed = playlistsRaw ? JSON.parse(playlistsRaw) : [];
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const now = new Date();
+      const matched = parsed.find((p: any) => {
+        if (!p) return false;
+        const start = p.start_at ? new Date(p.start_at) : null;
+        const end = p.end_at ? new Date(p.end_at) : null;
+        if (start && end) return now >= start && now <= end;
+        if (start && !end) return now >= start;
+        if (!start && end) return now <= end;
+        return false;
+      });
+      if (matched) playlistToUse = matched.id;
+    }
+  } catch (e) {
+    /* ignore parse errors */
+  }
+  const { data: queue } = useBroadcastQueue(playlistToUse);
   const { data: scheduledMedia } = useCurrentScheduledMedia();
   const [isPlaying, setIsPlaying] = useState(false);
 
