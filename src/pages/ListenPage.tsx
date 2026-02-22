@@ -369,12 +369,20 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
 
   const handleEnded = useCallback(() => {
     if (playableItems.length === 0) return;
-    setCurrentIndex(prev => {
-      const next = prev + 1;
-      if (next < playableItems.length) return next;
-      return loop ? 0 : prev;
-    });
-  }, [currentIndex, playableItems.length, loop]);
+    const next = currentIndex + 1;
+    if (next < playableItems.length) {
+      setCurrentIndex(next);
+      return;
+    }
+    if (loop) {
+      setCurrentIndex(0);
+      return;
+    }
+    // End of queue and not looping: stop playback and notify parent
+    const el = mode === "video" ? videoRef.current : audioRef.current;
+    try { el?.pause(); } catch {}
+    onPlayChange?.(false);
+  }, [currentIndex, playableItems.length, loop, mode, onPlayChange]);
 
   useEffect(() => {
     if (playableItems.length === 0) return;
@@ -382,17 +390,17 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
     if (el) {
       const item = playableItems[currentIndex];
       const newSrc = item?.file_url || "";
-      // Only update src if it changed to prevent reloading/pausing
+      // Only update src if it changed to prevent unnecessary reloads
       if (el.src !== newSrc) {
         el.src = newSrc;
-        el.load();
+        try { el.load(); } catch {}
       }
       const playPromise = el.play();
       if (playPromise !== undefined) {
         playPromise.then(() => onPlayChange?.(true)).catch((e) => console.log("Autoplay prevented:", e));
       }
     }
-  }, [currentIndex, playableItems, mode]);
+  }, [currentIndex, playableItems, mode, onPlayChange]);
 
   if (playableItems.length === 0) {
     return (
