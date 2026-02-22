@@ -89,7 +89,9 @@ export default function ListenPage() {
       .sort((a, b) => {
         const diff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
         if (diff !== 0) return diff;
-        return new Date((a as any).created_at || 0).getTime() - new Date((b as any).created_at || 0).getTime();
+        const timeDiff = new Date((a as any).created_at || 0).getTime() - new Date((b as any).created_at || 0).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return String(a.id || "").localeCompare(String(b.id || ""));
       });
   }, [queue]);
   const audioQueue = useMemo(() => activeQueue.filter(q => q.file_type === "audio"), [activeQueue]);
@@ -405,7 +407,7 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
       onPlayChange?.(false);
       return prev;
     });
-  }, [playableItems.length, loop, mode, onPlayChange]);
+  }, [playableItems, loop, mode, onPlayChange]);
 
   // Reset index when playlist changes (new items) so playback starts at top
   useEffect(() => {
@@ -453,7 +455,7 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
 
   return (
     <div className="relative w-full min-h-[300px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
-      <audio ref={audioRef} autoPlay onEnded={handleEnded} controls={false} />
+      <audio ref={audioRef} autoPlay onEnded={handleEnded} controls={false} playsInline />
       <div className="absolute inset-0 rounded-3xl glass-dark flex flex-col items-center justify-center">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[hsl(210_20%_90%/0.3)] to-transparent" />
         {logoUrl ? <img src={logoUrl} alt="" className="w-24 h-24 rounded-full object-cover border-2 border-white/10 mb-4 glow-silver" /> : <Radio className="w-16 h-16 text-primary/40 mb-4" />}
