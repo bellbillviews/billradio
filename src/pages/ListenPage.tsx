@@ -64,7 +64,11 @@ export default function ListenPage() {
     if (!queue) return [];
     return queue
       .filter(q => q.is_active)
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      .sort((a, b) => {
+        const diff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+        if (diff !== 0) return diff;
+        return new Date((a as any).created_at || 0).getTime() - new Date((b as any).created_at || 0).getTime();
+      });
   }, [queue]);
   const audioQueue = useMemo(() => activeQueue.filter(q => q.file_type === "audio"), [activeQueue]);
   const videoQueue = useMemo(() => activeQueue.filter(q => q.file_type === "video"), [activeQueue]);
@@ -361,20 +365,23 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const playableItems = items.filter(i => i.file_url);
+  const playableItems = useMemo(() => items.filter(i => i.file_url), [items]);
 
   const handleEnded = useCallback(() => {
     if (playableItems.length === 0) return;
-    const next = currentIndex + 1;
-    if (next < playableItems.length) setCurrentIndex(next);
-    else if (loop) setCurrentIndex(0);
+    setCurrentIndex(prev => {
+      const next = prev + 1;
+      if (next < playableItems.length) return next;
+      return loop ? 0 : prev;
+    });
   }, [currentIndex, playableItems.length, loop]);
 
   useEffect(() => {
     if (playableItems.length === 0) return;
     const el = mode === "video" ? videoRef.current : audioRef.current;
     if (el) {
-      const newSrc = playableItems[currentIndex]?.file_url || "";
+      const item = playableItems[currentIndex];
+      const newSrc = item?.file_url || "";
       // Only update src if it changed to prevent reloading/pausing
       if (el.src !== newSrc) {
         el.src = newSrc;
