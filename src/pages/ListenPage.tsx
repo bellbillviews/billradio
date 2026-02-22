@@ -393,34 +393,25 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
       onPlayChange?.(false);
       return;
     }
-    const next = currentIndex + 1;
-    if (next < playableItems.length) {
-      setCurrentIndex(next);
-      return;
-    }
-    if (loop) {
-      setCurrentIndex(0);
-      return;
-    }
-    const el = mode === "video" ? videoRef.current : audioRef.current;
-    try { el?.pause(); } catch {}
-    onPlayChange?.(false);
-  }, [currentIndex, playableItems.length, loop, mode, onPlayChange]);
+
+    setCurrentIndex((prev) => {
+      const next = prev + 1;
+      if (next < playableItems.length) return next;
+      if (loop) return 0;
+
+      // no more items and not looping — stop playback
+      const el = mode === "video" ? videoRef.current : audioRef.current;
+      try { el?.pause(); } catch {}
+      onPlayChange?.(false);
+      return prev;
+    });
+  }, [playableItems.length, loop, mode, onPlayChange]);
 
   // Reset index when playlist changes (new items) so playback starts at top
   useEffect(() => {
     setCurrentIndex(0);
     if (playableItems.length === 0) onPlayChange?.(false);
   }, [playableItems.map(i => i.id).join("|")]);
-
-  // Attach ended event listener directly to guard against ref swaps
-  useEffect(() => {
-    const el = mode === "video" ? videoRef.current : audioRef.current;
-    if (!el) return;
-    el.removeEventListener("ended", handleEnded);
-    el.addEventListener("ended", handleEnded);
-    return () => el.removeEventListener("ended", handleEnded);
-  }, [handleEnded, mode, currentIndex]);
 
   useEffect(() => {
     if (playableItems.length === 0) return;
