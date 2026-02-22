@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,20 @@ export default function AdminBroadcast() {
   const createPlatform = useCreateBroadcastPlatform();
   const updatePlatform = useUpdateBroadcastPlatform();
   const deletePlatform = useDeleteBroadcastPlatform();
-  const { data: queue } = useBroadcastQueue("broadcast");
+  const [playlists, setPlaylists] = useState<{ id: string; name: string }[]>([]);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string>("broadcast");
+  const [playlistDialogOpen, setPlaylistDialogOpen] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+
+  useEffect(() => {
+    try {
+      const raw = getVal("playlists");
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) setPlaylists(parsed);
+    } catch (e) { setPlaylists([]); }
+  }, [settings]);
+
+  const { data: queue } = useBroadcastQueue(selectedPlaylist);
   const createQueueItem = useCreateQueueItem();
   const deleteQueueItem = useDeleteQueueItem();
   const reorderQueue = useReorderQueue();
@@ -130,7 +143,7 @@ export default function AdminBroadcast() {
         title: queueForm.title,
         file_url: queueForm.file_url || null,
         file_type: queueForm.file_type,
-        queue_type: "broadcast",
+        queue_type: selectedPlaylist,
         duration_seconds: null,
         sort_order: (queue?.length || 0),
         is_active: true,
@@ -159,7 +172,7 @@ export default function AdminBroadcast() {
         title: file.name,
         file_url: publicUrl,
         file_type: fileType,
-        queue_type: "broadcast",
+        queue_type: selectedPlaylist,
         duration_seconds: null,
         sort_order: (queue?.length || 0) + i,
         is_active: true,
@@ -187,8 +200,39 @@ export default function AdminBroadcast() {
     reorderQueue.mutateAsync(newQueue.map((item, i) => ({ id: item.id, sort_order: i })));
   };
 
-  const handleNewPlaylist = () => {
-    toast({ title: "Coming Soon", description: "Playlist management is currently under development." });
+  const savePlaylistsSetting = async (pl: { id: string; name: string }[]) => {
+    const value = JSON.stringify(pl);
+    const setting = getSetting("playlists");
+    if (setting) await updateSetting.mutateAsync({ id: setting.id, setting_value: value });
+    else await supabase.from("site_settings").insert([{ setting_key: "playlists", setting_value: value, setting_type: "string" }]);
+    queryClient.invalidateQueries({ queryKey: ["site_settings"] });
+  };
+
+  const handleCreatePlaylist = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const name = newPlaylistName.trim();
+    if (!name) { toast({ variant: "destructive", title: "Name required" }); return; }
+    const id = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now().toString(36)}`;
+    const next = [...playlists, { id, name }];
+    await savePlaylistsSetting(next);
+    setPlaylists(next);
+    setNewPlaylistName("");
+    setPlaylistDialogOpen(false);
+    setSelectedPlaylist(id);
+    toast({ title: "Playlist created" });
+  };
+
+  const handleDeletePlaylist = async (id: string) => {
+    if (id === "broadcast") { toast({ variant: "destructive", title: "Cannot delete default queue" }); return; }
+    if (!confirm("Delete playlist and move its items to default queue?")) return;
+    // move items to default
+    const { error } = await supabase.from("broadcast_queue").update({ queue_type: "broadcast" }).eq("queue_type", id);
+    if (error) { toast({ variant: "destructive", title: "Failed to reassign items" }); return; }
+    const next = playlists.filter(p => p.id !== id);
+    await savePlaylistsSetting(next);
+    setPlaylists(next);
+    setSelectedPlaylist("broadcast");
+    toast({ title: "Playlist deleted and items moved to default" });
   };
 
   if (settingsLoading) {
@@ -345,11 +389,30 @@ export default function AdminBroadcast() {
                   <CardTitle>Queue & Playlists</CardTitle>
                   <CardDescription>Autoplays when live streams are offline. Drag to reorder.</CardDescription>
                   <div className="flex items-center gap-2 mt-2">
-                    <Select defaultValue="default">
-                      <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Select Playlist" /></SelectTrigger>
-                      <SelectContent><SelectItem value="default">Default Queue</SelectItem></SelectContent>
+                    <Select value={selectedPlaylist} onValueChange={(v) => setSelectedPlaylist(v)}>
+                      <SelectTrigger className="h-8 w-[220px]"><SelectValue placeholder="Select Playlist" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="broadcast">Default Queue</SelectItem>
+                        {playlists.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      </SelectContent>
                     </Select>
-                    <Button size="sm" variant="outline" className="h-8" onClick={handleNewPlaylist}><ListPlus className="w-3.5 h-3.5 mr-1.5" />New</Button>
+                    <Button size="sm" variant="outline" className="h-8" onClick={() => setPlaylistDialogOpen(true)}><ListPlus className="w-3.5 h-3.5 mr-1.5" />New</Button>
+                    <Button size="sm" variant="outline" className="h-8" onClick={() => handleDeletePlaylist(selectedPlaylist)} disabled={selectedPlaylist === "broadcast"}><Trash2 className="w-3.5 h-3.5 mr-1.5" />Delete</Button>
+                    <Dialog open={playlistDialogOpen} onOpenChange={setPlaylistDialogOpen}>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Create Playlist</DialogTitle></DialogHeader>
+                        <form onSubmit={handleCreatePlaylist} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Playlist Name</Label>
+                            <Input value={newPlaylistName} onChange={(e) => setNewPlaylistName(e.target.value)} placeholder="My Playlist" required />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="submit" className="flex-1">Create</Button>
+                            <Button variant="ghost" onClick={() => setPlaylistDialogOpen(false)}>Cancel</Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
                 <div className="flex gap-2 items-center">

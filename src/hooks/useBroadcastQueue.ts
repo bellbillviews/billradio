@@ -14,7 +14,7 @@ export interface BroadcastQueueItem {
   updated_at: string;
 }
 
-export function useBroadcastQueue(queueType: "broadcast" | "stream" = "broadcast", refetchInterval = 5000) {
+export function useBroadcastQueue(queueType: string = "broadcast", refetchInterval = 5000) {
   return useQuery({
     queryKey: ["broadcast_queue", queueType],
     queryFn: async () => {
