@@ -50,11 +50,7 @@ export default function HomePage() {
     if (!queue) return [];
     return queue
       .filter(q => q.is_active && q.file_type === "audio" && q.file_url)
-      .sort((a, b) => {
-        const diff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
-        if (diff !== 0) return diff;
-        return new Date((a as any).created_at).getTime() - new Date((b as any).created_at).getTime();
-      });
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   }, [queue]);
   const isLive = (radiocoEnabled && !!radiocoStreamUrl) || mixlrEnabled || broadcast?.broadcastEnabled;
 
@@ -349,9 +345,12 @@ function QueueMiniPlayer({ items }: { items: { id: string; title: string; file_u
         audio.src = newSrc;
         audio.load();
       }
-      audio.play()
-        .then(() => setIsPlaying(true))
-        .catch((e) => console.log("Autoplay prevented:", e));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => setIsPlaying(true))
+          .catch((e) => console.log("Autoplay prevented:", e));
+      }
     }
   }, [currentIndex, currentItem]);
 
@@ -377,14 +376,11 @@ function QueueMiniPlayer({ items }: { items: { id: string; title: string; file_u
   if (!currentItem) return null;
 
   return (
-    <div className="glass-dark rounded-full p-2 pr-6 flex items-center gap-4 border border-white/10 shadow-lg animate-fade-in">
-      <audio ref={audioRef} onEnded={handleEnded} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} />
+    <div className="glass-dark rounded-full p-2 flex items-center justify-center border border-white/10 shadow-lg animate-fade-in">
+      <audio ref={audioRef} onEnded={handleEnded} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} autoPlay />
       <Button size="icon" className="rounded-full w-12 h-12 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0" onClick={togglePlay}>
         {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-1" />}
       </Button>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-primary font-bold uppercase tracking-wider mb-0.5">Now Playing</p>
-      </div>
     </div>
   );
 }

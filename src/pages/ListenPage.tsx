@@ -62,13 +62,9 @@ export default function ListenPage() {
   const videoLive = !!isYouTubeLive;
   const activeQueue = useMemo(() => {
     if (!queue) return [];
-      return queue
+    return queue
       .filter(q => q.is_active)
-      .sort((a, b) => {
-        const diff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
-        if (diff !== 0) return diff;
-        return new Date((a as any).created_at).getTime() - new Date((b as any).created_at).getTime();
-      });
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   }, [queue]);
   const audioQueue = useMemo(() => activeQueue.filter(q => q.file_type === "audio"), [activeQueue]);
   const videoQueue = useMemo(() => activeQueue.filter(q => q.file_type === "video"), [activeQueue]);
@@ -384,7 +380,10 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
         el.src = newSrc;
         el.load();
       }
-      el.play().then(() => onPlayChange?.(true)).catch((e) => console.log("Autoplay prevented:", e));
+      const playPromise = el.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => onPlayChange?.(true)).catch((e) => console.log("Autoplay prevented:", e));
+      }
     }
   }, [currentIndex, playableItems, mode]);
 
@@ -410,7 +409,7 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
 
   return (
     <div className="relative w-full min-h-[300px] md:min-h-0" style={{ paddingBottom: "56.25%" }}>
-      <audio ref={audioRef} autoPlay onEnded={handleEnded} />
+      <audio ref={audioRef} autoPlay onEnded={handleEnded} controls={false} />
       <div className="absolute inset-0 rounded-3xl glass-dark flex flex-col items-center justify-center">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[hsl(210_20%_90%/0.3)] to-transparent" />
         {logoUrl ? <img src={logoUrl} alt="" className="w-24 h-24 rounded-full object-cover border-2 border-white/10 mb-4 glow-silver" /> : <Radio className="w-16 h-16 text-primary/40 mb-4" />}
