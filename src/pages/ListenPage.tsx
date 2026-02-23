@@ -421,14 +421,22 @@ function FallbackPlayer({ items, mode, logoUrl, loop, onPlayChange }: { items: {
     if (el) {
       const item = playableItems[currentIndex];
       const newSrc = item?.file_url || "";
-      if (el.src !== newSrc) {
+
+      // Resolve absolute URL to prevent unnecessary reloads when data refetches
+      const link = document.createElement("a");
+      link.href = newSrc;
+      const absoluteNewSrc = link.href;
+
+      if (el.src !== absoluteNewSrc) {
         try { el.pause(); } catch {}
         el.src = newSrc;
         try { el.load(); } catch {}
-      }
-      const playPromise = el.play();
-      if (playPromise !== undefined) {
-        playPromise.then(() => onPlayChange?.(true)).catch((e) => console.log("Autoplay prevented:", e));
+        const playPromise = el.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => onPlayChange?.(true)).catch((e) => console.log("Autoplay prevented:", e));
+        }
+      } else if (el.paused) {
+        el.play().then(() => onPlayChange?.(true)).catch(() => {});
       }
     }
   }, [currentIndex, playableItems, mode, onPlayChange]);
