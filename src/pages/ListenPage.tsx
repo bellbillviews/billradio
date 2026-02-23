@@ -22,25 +22,73 @@ export default function ListenPage() {
   const getSetting = (key: string) => settings?.find(s => s.setting_key === key)?.setting_value || "";
   const configuredActive = getSetting("active_playlist") || "broadcast";
   const playlistsRaw = getSetting("playlists");
-  let playlistToUse = configuredActive;
-  try {
-    const parsed = playlistsRaw ? JSON.parse(playlistsRaw) : [];
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      const now = new Date();
-      const matched = parsed.find((p: any) => {
-        if (!p) return false;
-        const start = p.start_at ? new Date(p.start_at) : null;
-        const end = p.end_at ? new Date(p.end_at) : null;
-        if (start && end) return now >= start && now <= end;
-        if (start && !end) return now >= start;
-        if (!start && end) return now <= end;
-        return false;
-      });
-      if (matched) playlistToUse = matched.id;
-    }
-  } catch (e) {
-    /* ignore parse errors */
-  }
+
+  // track which playlist should be used (can be overridden by a time-bound scheduled playlist)
+  const [playlistToUse, setPlaylistToUse] = useState<string>(configuredActive);
+  // optional upcoming scheduled playlist info for small UI sign
+  const [upcomingPlaylist, setUpcomingPlaylist] = useState<{ id: string; start_at?: string } | null>(null);
+
+  // Evaluate scheduled playlists and update `playlistToUse` when schedule boundaries are reached.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const evaluate = () => {
+      try {
+        const parsed = playlistsRaw ? JSON.parse(playlistsRaw) : [];
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+          setPlaylistToUse(configuredActive);
+          setUpcomingPlaylist(null);
+          return;
+        }
+
+        const now = new Date();
+        let matched: any = null;
+        let nextTs: number | null = null;
+
+        parsed.forEach((p: any) => {
+          if (!p) return;
+          const start = p.start_at ? new Date(p.start_at) : null;
+          const end = p.end_at ? new Date(p.end_at) : null;
+
+          if (start && end) {
+            if (now >= start && now <= end) matched = p;
+            if (now < start && (nextTs === null || start.getTime() < nextTs)) nextTs = start.getTime();
+            if (now < end && (nextTs === null || end.getTime() < nextTs)) nextTs = end.getTime();
+          } else if (start && !end) {
+            if (now >= start) matched = p;
+            if (now < start && (nextTs === null || start.getTime() < nextTs)) nextTs = start.getTime();
+          } else if (!start && end) {
+            if (now <= end) matched = p;
+            if (now < end && (nextTs === null || end.getTime() < nextTs)) nextTs = end.getTime();
+          }
+        });
+
+        if (matched) {
+          setPlaylistToUse(matched.id);
+          setUpcomingPlaylist(null);
+        } else {
+          setPlaylistToUse(configuredActive);
+          // show the nearest upcoming start if available
+          const upcoming = parsed
+            .filter((p: any) => p.start_at && new Date(p.start_at) > now)
+            .sort((a: any, b: any) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0];
+          if (upcoming) setUpcomingPlaylist({ id: upcoming.id, start_at: upcoming.start_at });
+          else setUpcomingPlaylist(null);
+        }
+
+        if (nextTs) {
+          const delay = Math.max(1000, nextTs - Date.now() + 500);
+          timer = setTimeout(evaluate, delay);
+        }
+      } catch (e) {
+        setPlaylistToUse(configuredActive);
+        setUpcomingPlaylist(null);
+      }
+    };
+
+    evaluate();
+    return () => { if (timer) clearTimeout(timer); };
+  }, [playlistsRaw, configuredActive]);
   const { data: queue } = useBroadcastQueue(playlistToUse);
   const { data: scheduledMedia } = useCurrentScheduledMedia();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -147,6 +195,12 @@ export default function ListenPage() {
                 </button>
               </div>
             </div>
+
+            {upcomingPlaylist && (
+              <div className="text-center text-sm text-white/60 mb-4 animate-fade-in" style={{ animationDelay: "0.18s" }}>
+                Scheduled playlist starts at {new Date(upcomingPlaylist.start_at || "").toLocaleString()} — it will play automatically.
+              </div>
+            )}
 
             {/* Player */}
             <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
