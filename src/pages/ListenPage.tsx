@@ -8,6 +8,7 @@ import { DynamicSocialLinks } from "@/components/DynamicSocialLinks";
 import { ListenerRequestForm } from "@/components/ListenerRequestForm";
 import { PageAds } from "@/components/ads/PageAds";
 import { useSiteSettings } from "@/hooks/useSiteData";
+import { useAuth } from "@/hooks/useAuth";
 import { useBroadcastSettings } from "@/hooks/useBroadcastSettings";
 import { useBroadcastQueue } from "@/hooks/useBroadcastQueue";
 import { useCurrentScheduledMedia } from "@/hooks/useScheduledMedia";
@@ -25,6 +26,9 @@ export default function ListenPage() {
 
   // track which playlist should be used (can be overridden by a time-bound scheduled playlist)
   const [playlistToUse, setPlaylistToUse] = useState<string>(configuredActive);
+  // upcoming scheduled playlist info (for admin-only banner)
+  const [upcomingPlaylist, setUpcomingPlaylist] = useState<{ id: string; name?: string; start_at?: string } | null>(null);
+  const { isAdmin } = useAuth();
 
   // Evaluate scheduled playlists and update `playlistToUse` when schedule boundaries are reached.
   useEffect(() => {
@@ -62,8 +66,15 @@ export default function ListenPage() {
 
         if (matched) {
           setPlaylistToUse(matched.id);
+          setUpcomingPlaylist(null);
         } else {
           setPlaylistToUse(configuredActive);
+          // show the nearest upcoming start if available
+          const upcoming = parsed
+            .filter((p: any) => p.start_at && new Date(p.start_at) > now)
+            .sort((a: any, b: any) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0];
+          if (upcoming) setUpcomingPlaylist({ id: upcoming.id, name: upcoming.name, start_at: upcoming.start_at });
+          else setUpcomingPlaylist(null);
         }
 
         if (nextTs) {
@@ -162,6 +173,12 @@ export default function ListenPage() {
                 Experience the rhythm of Nigeria. Stream our live broadcast 24/7.
               </p>
             </div>
+
+            {isAdmin && upcomingPlaylist && (
+              <div className="text-center text-sm text-white/60 mb-4 animate-fade-in" style={{ animationDelay: "0.18s" }}>
+                Admin notice: scheduled playlist <span className="font-bold text-white">{upcomingPlaylist.name || upcomingPlaylist.id}</span> starts at {new Date(upcomingPlaylist.start_at || "").toLocaleString()} and will auto-play.
+              </div>
+            )}
 
             {/* Audio / Video Toggle */}
             <div className="flex justify-center animate-fade-in" style={{ animationDelay: "0.15s" }}>
