@@ -15,7 +15,7 @@ import { useBroadcastPlatforms, useCreateBroadcastPlatform, useUpdateBroadcastPl
 import { useBroadcastQueue, useCreateQueueItem, useUpdateQueueItem, useDeleteQueueItem, useReorderQueue, BroadcastQueueItem } from "@/hooks/useBroadcastQueue";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Pencil, Trash2, Tv, Radio, Youtube, ArrowUp, ArrowDown, Music, Upload, Eye, Save, FolderOpen, Play, RotateCcw, GripVertical, ListPlus } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Tv, Radio, Youtube, ArrowUp, ArrowDown, Music, Upload, Eye, Save, FolderOpen, Play, RotateCcw, GripVertical, ListPlus, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 function extractVideoId(input: string): string {
@@ -45,6 +45,8 @@ export default function AdminBroadcast() {
   const [newPlaylistStart, setNewPlaylistStart] = useState<string | null>(null);
   const [newPlaylistEnd, setNewPlaylistEnd] = useState<string | null>(null);
   const [editingPlaylist, setEditingPlaylist] = useState<{ id?: string; name: string; start_at?: string | null; end_at?: string | null } | null>(null);
+  const [activeScheduledPlaylist, setActiveScheduledPlaylist] = useState<{ id: string; name: string; end_at?: string | null } | null>(null);
+  const [upcomingPlaylist, setUpcomingPlaylist] = useState<{ id: string; name: string; start_at: string } | null>(null);
 
   useEffect(() => {
     try {
@@ -59,6 +61,58 @@ export default function AdminBroadcast() {
     const active = getVal("active_playlist");
     if (active) setSelectedPlaylist(active);
   }, [settings]);
+
+  // Evaluate scheduled playlists and update UI banners
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const evaluateSchedules = () => {
+      if (!playlists || playlists.length === 0) {
+        setActiveScheduledPlaylist(null);
+        setUpcomingPlaylist(null);
+        return;
+      }
+
+      const now = new Date();
+      let matched: any = null;
+      let nextTs: number | null = null;
+
+      playlists.forEach((p) => {
+        if (!p) return;
+        const start = p.start_at ? new Date(p.start_at) : null;
+        const end = p.end_at ? new Date(p.end_at) : null;
+
+        if (start && end) {
+          if (now >= start && now <= end) matched = p;
+          if (now < start && (nextTs === null || start.getTime() < nextTs)) nextTs = start.getTime();
+          if (now < end && (nextTs === null || end.getTime() < nextTs)) nextTs = end.getTime();
+        } else if (start && !end) {
+          if (now >= start) matched = p;
+          if (now < start && (nextTs === null || start.getTime() < nextTs)) nextTs = start.getTime();
+        } else if (!start && end) {
+          if (now <= end) matched = p;
+          if (now < end && (nextTs === null || end.getTime() < nextTs)) nextTs = end.getTime();
+        }
+      });
+
+      setActiveScheduledPlaylist(matched);
+
+      if (matched) {
+        setUpcomingPlaylist(null);
+      } else {
+        const upcoming = playlists.filter((p: any) => p.start_at && new Date(p.start_at) > now).sort((a: any, b: any) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0];
+        setUpcomingPlaylist(upcoming || null);
+      }
+
+      if (nextTs) {
+        const delay = Math.max(5000, nextTs - Date.now() + 500); // check at least every 5s
+        timer = setTimeout(evaluateSchedules, delay);
+      }
+    };
+
+    evaluateSchedules();
+    return () => { if (timer) clearTimeout(timer); };
+  }, [playlists]);
 
   const saveActivePlaylist = async (id: string) => {
     const setting = getSetting("active_playlist");
@@ -418,6 +472,23 @@ export default function AdminBroadcast() {
 
         {/* Queue Tab */}
         <TabsContent value="queue" className="space-y-6">
+          {activeScheduledPlaylist && (
+            <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl text-sm space-y-1">
+              <p className="font-bold text-green-400 flex items-center gap-2"><Radio className="w-4 h-4" /> Active Scheduled Playlist</p>
+              <p className="text-muted-foreground">
+                The playlist <span className="font-bold text-foreground">"{activeScheduledPlaylist.name}"</span> is currently active and will play automatically for listeners.
+                {activeScheduledPlaylist.end_at && ` It ends at ${new Date(activeScheduledPlaylist.end_at).toLocaleString()}.`}
+              </p>
+            </div>
+          )}
+          {upcomingPlaylist && (
+            <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl text-sm space-y-1">
+              <p className="font-bold text-blue-400 flex items-center gap-2"><Calendar className="w-4 h-4" /> Upcoming Scheduled Playlist</p>
+              <p className="text-muted-foreground">
+                The playlist <span className="font-bold text-foreground">"{upcomingPlaylist.name}"</span> is scheduled to start at {new Date(upcomingPlaylist.start_at).toLocaleString()}.
+              </p>
+            </div>
+          )}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between flex-wrap gap-3">

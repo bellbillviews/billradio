@@ -25,8 +25,6 @@ export default function ListenPage() {
 
   // track which playlist should be used (can be overridden by a time-bound scheduled playlist)
   const [playlistToUse, setPlaylistToUse] = useState<string>(configuredActive);
-  // optional upcoming scheduled playlist info for small UI sign
-  const [upcomingPlaylist, setUpcomingPlaylist] = useState<{ id: string; start_at?: string } | null>(null);
 
   // Evaluate scheduled playlists and update `playlistToUse` when schedule boundaries are reached.
   useEffect(() => {
@@ -37,7 +35,6 @@ export default function ListenPage() {
         const parsed = playlistsRaw ? JSON.parse(playlistsRaw) : [];
         if (!Array.isArray(parsed) || parsed.length === 0) {
           setPlaylistToUse(configuredActive);
-          setUpcomingPlaylist(null);
           return;
         }
 
@@ -65,15 +62,8 @@ export default function ListenPage() {
 
         if (matched) {
           setPlaylistToUse(matched.id);
-          setUpcomingPlaylist(null);
         } else {
           setPlaylistToUse(configuredActive);
-          // show the nearest upcoming start if available
-          const upcoming = parsed
-            .filter((p: any) => p.start_at && new Date(p.start_at) > now)
-            .sort((a: any, b: any) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0];
-          if (upcoming) setUpcomingPlaylist({ id: upcoming.id, start_at: upcoming.start_at });
-          else setUpcomingPlaylist(null);
         }
 
         if (nextTs) {
@@ -82,7 +72,6 @@ export default function ListenPage() {
         }
       } catch (e) {
         setPlaylistToUse(configuredActive);
-        setUpcomingPlaylist(null);
       }
     };
 
@@ -195,12 +184,6 @@ export default function ListenPage() {
                 </button>
               </div>
             </div>
-
-            {upcomingPlaylist && (
-              <div className="text-center text-sm text-white/60 mb-4 animate-fade-in" style={{ animationDelay: "0.18s" }}>
-                Scheduled playlist starts at {new Date(upcomingPlaylist.start_at || "").toLocaleString()} — it will play automatically.
-              </div>
-            )}
 
             {/* Player */}
             <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
